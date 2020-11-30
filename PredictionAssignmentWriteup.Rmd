@@ -1,0 +1,63 @@
+---
+title: "Prediction Assignment Writeup"
+author: "Shivam Khandelwal"
+date: "11/30/2020"
+output: html_document
+---
+
+# Background:
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+
+# Loading the dataset and importing required libraries:
+```{r}
+library(caret)
+library(randomForest)
+
+train_data = read.csv("./pml-training.csv",na.strings=c("NA","#DIV/0!",""))
+test_data = read.csv("./pml-testing.csv",na.strings=c("NA","#DIV/0!",""))
+```
+
+There are 160 variables in the dataset, we will remove variables with many NA's.
+
+```{r}
+colname <- colnames(train_data)[!colSums(is.na(train_data)) > 0]
+colname
+```
+
+We should delete the column that contains NA to avoid the error. In addition, in order to make accurate predictions, columns that is not related exercise must also be deleted. In particular “X”, “user_name”, “raw_timestamp_part_1”, “raw_timestamp_part_2”, “cvtd_timestamp”, “new_window”, “num_window” are deleted.
+
+```{r}
+colname <- colname[8: length(colname)]
+df_no_NA <- train_data[colname]
+
+#Check the colnames of df_wo_NA is in test_data.
+#The last colname is "classe"
+is.element(colname, colnames(test_data))
+```
+
+## Splitting dataset for cross validation:
+For the purpose of training and validating, we divide the training dataset into training dataset(70%) and validation dataset(30%). For reproducibility we will specify a random seed
+```{r}
+set.seed(123)
+Train_ratio = createDataPartition(y=df_no_NA$classe,p=0.7, list=FALSE)
+
+training.set = df_no_NA[Train_ratio,]
+validation.set = df_no_NA[-Train_ratio,]
+```
+
+## Defining a Random Forest Model for prediction analysis:
+
+```{r}
+model_rf <- train(classe ~ ., data = training.set, method = "rf")
+pred_rf <- predict(model_rf, validation.set)
+confusionMatrix(validation.set$classe, pred_rf)
+```
+
+## Predicting with random forest for the given set of test data.
+
+```{r}
+submit_rf <- predict(model_rf, test_data)
+submit_rf
+```
+
